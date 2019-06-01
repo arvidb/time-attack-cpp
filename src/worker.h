@@ -34,7 +34,7 @@ struct Worker {
     /**
      * Creates all worker tasks for the params supplied
      */
-    void DoWork(std::vector<std::string> params) {
+    void DoWork(const std::vector<std::string>& params) {
 
         if (_bodyFmtTemplate.empty()) {
         
@@ -44,7 +44,7 @@ struct Worker {
         
         spdlog::debug("Starting worker [body template: {}]", _bodyFmtTemplate);
         
-        results.clear();
+        _results.clear();
         
         for (const auto& param : params) {
             
@@ -94,12 +94,12 @@ struct Worker {
         
         // Get results from worker tasks
         for (auto& promise : _futures) {
-            results.push_back(promise.get());
+            _results.push_back(promise.get());
         }
         _futures.clear();
         
         // Sort results based on duration
-        std::sort(results.begin(), results.end(), [](const auto& a, const auto& b) {
+        std::sort(_results.begin(), _results.end(), [](const auto& a, const auto& b) {
             return a.duration < b.duration;
         });
     }
@@ -109,7 +109,7 @@ struct Worker {
      */
     void DisplayResult() const noexcept {
         
-        for (const auto& result : results) {
+        for (const auto& result : _results) {
             spdlog::info("Average time {:.5f}s for input: \"{}\"", result.duration, result.input);
         }
     }
@@ -134,7 +134,7 @@ private:
     Semaphore _sem;
     std::vector<std::future<WorkerTaskResult>> _futures;
     
-    std::vector<WorkerTaskResult> results;
+    std::vector<WorkerTaskResult> _results;
     
     int _sampleCount = kDefaultSampleCount;
     
