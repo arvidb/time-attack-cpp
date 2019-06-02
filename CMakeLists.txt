@@ -11,6 +11,7 @@ include_directories(external/spdlog/include)
 set(SOURCES 
    src/main.cpp
    src/worker.h
+   src/result_functions.h
    src/common.h
 )
 
