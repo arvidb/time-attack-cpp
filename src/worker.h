@@ -17,7 +17,7 @@ namespace timeattack {
     using ResultFunction = std::function<const double(std::vector<double>)>;
     
     constexpr int kDefaultSampleCount = 1;
-    constexpr int kDefaultMaxConcurrentRequests = 5;
+    constexpr int kDefaultMaxConcurrentRequests = 1;
     constexpr int kDefaultPort = 80;
     constexpr int kDefaultTimeout = 5;
     
@@ -29,7 +29,7 @@ namespace timeattack {
         
         struct WorkerTaskResult {
             std::string input;
-            double duration;
+            std::vector<double> samples;
         };
         
         
@@ -57,10 +57,10 @@ namespace timeattack {
                 return;
             }
             
-            spdlog::debug("Starting worker");
-            spdlog::debug("Body template: {}", _bodyFmtTemplate);
-            spdlog::debug("API path: {}", _apiPath);
-            spdlog::debug("Request method: {}",
+            spdlog::info("Starting worker");
+            spdlog::info("Body template: {}", _bodyFmtTemplate);
+            spdlog::info("API path: {}", _apiPath);
+            spdlog::info("Request method: {}",
                           _requestMethod == RequestMethod::GET ? "GET" : "POST");
             
             _results.clear();
@@ -122,7 +122,7 @@ namespace timeattack {
                     
                     _sem.notify();
                     
-                    return {param, _resultFunction(samples)};
+                    return {param, samples};
                 });
                 
                 _futures.push_back(std::move(task));
@@ -133,11 +133,6 @@ namespace timeattack {
                 _results.push_back(future.get());
             }
             _futures.clear();
-            
-            // Sort results based on duration
-            std::sort(_results.begin(), _results.end(), [](const auto& a, const auto& b) {
-                return a.duration < b.duration;
-            });
         }
         
         /**
@@ -145,9 +140,22 @@ namespace timeattack {
          */
         void DisplayResult() const noexcept {
             
-            for (const auto& result : _results) {
-                spdlog::info("Average time {:.5f}s for input: \"{}\"", result.duration, result.input);
+            spdlog::info("");
+            
+            // Create a local copy of results
+            auto results = _results;
+            
+            // Sort results based on duration
+            std::sort(results.begin(), results.end(), [this](const auto& a, const auto& b) {
+                return _resultFunction(a.samples) < _resultFunction(a.samples);
+            });
+            
+            for (const auto& result : results) {
+                
+                auto duration = _resultFunction(result.samples);
+                spdlog::info("Average time {:.5f}s for input: \"{}\" after {} tries", duration, result.input, result.samples.size());
             }
+            spdlog::info("");
         }
         
     public: // Setters
