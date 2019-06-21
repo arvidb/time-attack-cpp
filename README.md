@@ -1,5 +1,5 @@
 # Time Attack Cpp
-A simple utility to perform timing attacks on REST API's
+An utility to perform benchmark tests on your REST API's endpoints
 
 # Technologies
 * cpp-httplib - HTTP library (https://github.com/yhirose/cpp-httplib)
@@ -9,6 +9,12 @@ A simple utility to perform timing attacks on REST API's
 # Dependencies
 * CMake 3.0
 * Requires C++17 compatible compiler
+
+# Installation
+## Clone
+Clone this repository using
+```git clone --recursive https://github.com/arvidb/time-attack-cpp.git```
+
 
 # Build
 * Create a build folder ```mkdir build && cd build```
