@@ -2,8 +2,7 @@
 
 #include "common.h"
 #include "result_functions.h"
-
-#include <cpp-httplib/httplib.h>
+#include "rest_client_adapter.h"
 
 #include <chrono>
 #include <numeric>
@@ -12,23 +11,21 @@
 #include <thread>
 #include <future>
 
-namespace timeattack {
+namespace timeattack
+{
     
     using resultFunc_t = std::function<const duration_t(std::vector<duration_t>)>;
-        
-    enum class RequestMethod {
-        GET, POST
-    };
-    
-    struct Worker {
+            
+    class Worker {
         
         struct WorkerTaskResult {
             std::string input;
             std::vector<duration_t> samples;
         };
         
-        Worker(const std::string& host, const int port, const int maxConcurrentRequests, const int timeout)
-            : _cli(host.c_str(), port, timeout),
+    public:
+        Worker(const std::string& host, const int port, const int timeout, const int maxConcurrentRequests)
+            : _cli(host, port, timeout),
               _sem(maxConcurrentRequests)
         {
             spdlog::debug("Creating worker for {}:{}", host, port);
@@ -75,26 +72,8 @@ namespace timeattack {
                         
                         for (int i=0; i < _sampleCount; i++) {
                             
-                            const auto ExecuteRequest = [this, param](const RequestMethod method, const std::string& endpoint) {
-                                
-                                std::shared_ptr<httplib::Response> response;
-                                
-                                if (method == RequestMethod::GET) {
-                                    if ((response = _cli.Get(endpoint.c_str())) == nullptr) {
-                                        throw std::runtime_error("Error while performing GET request");
-                                    }
-                                }
-                                else if (method == RequestMethod::POST) {
-                                    if ((response = _cli.Post(endpoint.c_str(), fmt::format(_bodyFmtTemplate, param), "application/x-www-form-urlencoded")) == nullptr) {
-                                        throw std::runtime_error("Error while performing POST request");
-                                    }
-                                }
-                                
-                                return response;
-                            };
-                            
                             auto start = std::chrono::steady_clock::now();
-                            auto res = ExecuteRequest(_requestMethod, _endpoint);
+                            const auto& res = _cli.ExecuteRequest(_requestMethod, _endpoint, fmt::format(_bodyFmtTemplate, param));
                             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
                             
                             if (res != nullptr) {
@@ -184,7 +163,7 @@ namespace timeattack {
         
     private:
         
-        httplib::Client _cli;
+        RestClientAdapter _cli;
         Semaphore _sem;
         
         std::vector<std::future<WorkerTaskResult>> _futures;

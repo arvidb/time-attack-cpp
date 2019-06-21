@@ -14,6 +14,7 @@ set(SOURCES
    src/main.cpp
    src/worker.h
    src/result_functions.h
+   src/rest_client_adapter.h
    src/common.h
 )
 

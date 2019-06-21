@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     std::string endpoint = "/";
     app.add_option("-e,--endpoint", endpoint, "Endpoint");
     
-    std::string bodyFormat = "password={}";
+    std::string bodyFormat = "{}";
     app.add_option("-b,--body", bodyFormat, "Body format template");
     
     int timeout = kDefaultTimeout;
@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     
     // Run experiment
     {
-        timeattack::Worker worker(hostname, port, jobCount, timeout);
+        timeattack::Worker worker(hostname, port, timeout, jobCount);
         worker.SetEndpoint(endpoint);
         worker.SetRequestType(timeattack::RequestMethod::POST);
         worker.SetSampleCount(sampleCount);
