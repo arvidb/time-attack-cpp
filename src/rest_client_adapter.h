@@ -20,21 +20,23 @@ namespace timeattack
     class RestClientAdapter {
         
     public:
-        RestClientAdapter(const std::string& host, const int port, const int timeout)
-            : _cli(host.c_str(), port, timeout)
+        RestClientAdapter(const std::string& host, const int port, const int timeout) noexcept
+            : _host(host), _port(port), _timeout(timeout)
         {}
         
-        const std::unique_ptr<RestClientAdapterResponse> ExecuteRequest(const RequestMethod method, const std::string& endpoint, const std::string& postData) {
+        const std::unique_ptr<RestClientAdapterResponse> ExecuteRequest(const RequestMethod method, const std::string& endpoint, const std::string& postData) const {
+            
+            httplib::Client client(_host.c_str(), _port, _timeout);
             
             std::shared_ptr<httplib::Response> response;
             
             if (method == RequestMethod::GET) {
-                if ((response = _cli.Get(endpoint.c_str())) == nullptr) {
+                if ((response = client.Get(endpoint.c_str())) == nullptr) {
                     throw std::runtime_error("Error while performing GET request");
                 }
             }
             else if (method == RequestMethod::POST) {
-                if ((response = _cli.Post(endpoint.c_str(), postData, "application/x-www-form-urlencoded")) == nullptr) {
+                if ((response = client.Post(endpoint.c_str(), postData, "application/x-www-form-urlencoded")) == nullptr) {
                     throw std::runtime_error("Error while performing POST request");
                 }
             }
@@ -45,6 +47,8 @@ namespace timeattack
         };
         
     private:
-        httplib::Client _cli;
+        const std::string _host;
+        const int _port;
+        const int _timeout;
     };
 }

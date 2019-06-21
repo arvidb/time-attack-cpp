@@ -13,7 +13,6 @@
 
 namespace timeattack
 {
-    
     using resultFunc_t = std::function<const duration_t(std::vector<duration_t>)>;
             
     class Worker {
@@ -56,56 +55,35 @@ namespace timeattack
             
             _results.clear();
             
-            for (const auto& param : params) {
-                
-                spdlog::debug("Creating task for input: {}", param);
-                
-                auto task = std::async([this, param]() -> WorkerTaskResult {
-                    
-                    _sem.wait();
-                    
-                    spdlog::debug("Processing input: {} [samples: {}]", param, _sampleCount);
-                    
-                    std::vector<duration_t> samples;
-                    
-                    try {
-                        
-                        for (int i=0; i < _sampleCount; i++) {
-                            
-                            auto start = std::chrono::steady_clock::now();
-                            const auto& res = _cli.ExecuteRequest(_requestMethod, _endpoint, fmt::format(_bodyFmtTemplate, param));
-                            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
-                            
-                            if (res != nullptr) {
-                                spdlog::trace("Got reponse with status: {} and body {}", res->status, res->body);
-                            }
-                            
-                            samples.push_back(duration.count() / 1000.0);
-                        }
-                        
-                        spdlog::debug("Processing of input: {} finished", param);
-                        
-                    } catch(const std::runtime_error& e) {
-                        
-                        spdlog::critical(e.what());
-                    } catch(...) {
-                        
-                        spdlog::critical("Unhandled exception while processing input: {}", param);
-                    }
-                    
-                    _sem.notify();
-                    
-                    return {param, samples};
-                });
-                
-                _futures.push_back(std::move(task));
-            }
+            CreateTasks(params);
+            
+            InitProgress(_futures.size() * _sampleCount);
             
             // Get results from worker tasks
             for (auto& future : _futures) {
                 _results.push_back(future.get());
             }
             _futures.clear();
+        }
+        
+        void InitProgress(int total) noexcept {
+        
+            _totalItems = total;
+            _processedItems = 0;
+            _lastProgress = 0;
+        }
+        
+        void IncreaseProgress() noexcept {
+        
+            std::unique_lock<std::mutex> lock(_mtxProgress);
+            _processedItems++;
+            
+            auto percentageLeft = static_cast<int>(100 * (static_cast<float>(_processedItems) / _totalItems));
+            if (_lastProgress != percentageLeft && percentageLeft % 10 == 0) {
+                
+                spdlog::info("Progress {}% ({}/{})", percentageLeft, _processedItems, _totalItems);
+                _lastProgress = percentageLeft;
+            }
         }
         
         /**
@@ -129,6 +107,58 @@ namespace timeattack
                 spdlog::info("Average time {:.5f}s for input: \"{}\" after {} tries", duration, result.input, result.samples.size());
             }
             spdlog::info("");
+        }
+        
+    private:
+        
+        void CreateTasks(const std::vector<std::string>& params) {
+            
+            for (const auto& param : params) {
+                
+                spdlog::debug("Creating task for input: {}", param);
+                
+                auto task = std::async([this, param]() -> WorkerTaskResult {
+                    
+                    _sem.wait();
+                    
+                    spdlog::debug("Processing input: {} [samples: {}]", param, _sampleCount);
+                    
+                    std::vector<duration_t> samples;
+                    
+                    try {
+                        
+                        for (int i=0; i < _sampleCount; i++) {
+                            
+                            auto start = std::chrono::steady_clock::now();
+                            const auto& res = _cli.ExecuteRequest(_requestMethod, _endpoint, fmt::format(_bodyFmtTemplate, param));
+                            auto end = std::chrono::steady_clock::now();
+                            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+                            
+                            if (res != nullptr) {
+                                spdlog::trace("Got reponse with status: {} and body {}", res->status, res->body);
+                            }
+                            
+                            samples.push_back(duration.count() / 1000.0);
+                            IncreaseProgress();
+                        }
+                        
+                        spdlog::debug("Processing of input: {} finished", param);
+                        
+                    } catch(const std::runtime_error& e) {
+                        
+                        spdlog::critical(e.what());
+                    } catch(...) {
+                        
+                        spdlog::critical("Unhandled exception while processing input: {}", param);
+                    }
+                    
+                    _sem.notify();
+                    
+                    return {param, samples};
+                });
+                
+                _futures.push_back(std::move(task));
+            }
         }
         
     public: // Setters
@@ -177,5 +207,10 @@ namespace timeattack
         std::string _bodyFmtTemplate = "";
         
         int _sampleCount;
+        
+        int _lastProgress;
+        int _totalItems;
+        int _processedItems;
+        std::mutex _mtxProgress;
     };
 }
