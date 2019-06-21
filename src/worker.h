@@ -14,13 +14,8 @@
 
 namespace timeattack {
     
-    using ResultFunction = std::function<const double(std::vector<double>)>;
-    
-    constexpr int kDefaultSampleCount = 1;
-    constexpr int kDefaultMaxConcurrentRequests = 1;
-    constexpr int kDefaultPort = 80;
-    constexpr int kDefaultTimeout = 5;
-    
+    using resultFunc_t = std::function<const duration_t(std::vector<duration_t>)>;
+        
     enum class RequestMethod {
         GET, POST
     };
@@ -29,13 +24,12 @@ namespace timeattack {
         
         struct WorkerTaskResult {
             std::string input;
-            std::vector<double> samples;
+            std::vector<duration_t> samples;
         };
         
-        
-        Worker(const std::string& host, const int port = kDefaultPort, const int maxConcurrentRequests = kDefaultMaxConcurrentRequests)
-        : _cli(host.c_str(), port, kDefaultTimeout),
-        _sem(maxConcurrentRequests)
+        Worker(const std::string& host, const int port, const int maxConcurrentRequests, const int timeout)
+            : _cli(host.c_str(), port, timeout),
+              _sem(maxConcurrentRequests)
         {
             spdlog::debug("Creating worker for {}:{}", host, port);
         }
@@ -51,15 +45,15 @@ namespace timeattack {
                 return;
             }
             
-            if (_apiPath.empty()) {
+            if (_endpoint.empty()) {
                 
-                spdlog::error("API path cannot be empty, specify a path starting with a leading slash \"/\"");
+                spdlog::error("Endpoint cannot be empty, specify a endpoint starting with a leading slash \"/\"");
                 return;
             }
             
             spdlog::info("Starting worker");
             spdlog::info("Body template: {}", _bodyFmtTemplate);
-            spdlog::info("API path: {}", _apiPath);
+            spdlog::info("Endpoint: {}", _endpoint);
             spdlog::info("Request method: {}",
                           _requestMethod == RequestMethod::GET ? "GET" : "POST");
             
@@ -75,23 +69,23 @@ namespace timeattack {
                     
                     spdlog::debug("Processing input: {} [samples: {}]", param, _sampleCount);
                     
-                    std::vector<double> samples;
+                    std::vector<duration_t> samples;
                     
                     try {
                         
                         for (int i=0; i < _sampleCount; i++) {
                             
-                            const auto ExecuteRequest = [this, param](const RequestMethod method, const std::string& path) {
+                            const auto ExecuteRequest = [this, param](const RequestMethod method, const std::string& endpoint) {
                                 
                                 std::shared_ptr<httplib::Response> response;
                                 
                                 if (method == RequestMethod::GET) {
-                                    if ((response = _cli.Get(path.c_str())) == nullptr) {
+                                    if ((response = _cli.Get(endpoint.c_str())) == nullptr) {
                                         throw std::runtime_error("Error while performing GET request");
                                     }
                                 }
                                 else if (method == RequestMethod::POST) {
-                                    if ((response = _cli.Post(path.c_str(), fmt::format(_bodyFmtTemplate, param), "application/x-www-form-urlencoded")) == nullptr) {
+                                    if ((response = _cli.Post(endpoint.c_str(), fmt::format(_bodyFmtTemplate, param), "application/x-www-form-urlencoded")) == nullptr) {
                                         throw std::runtime_error("Error while performing POST request");
                                     }
                                 }
@@ -100,7 +94,7 @@ namespace timeattack {
                             };
                             
                             auto start = std::chrono::steady_clock::now();
-                            auto res = ExecuteRequest(_requestMethod, _apiPath);
+                            auto res = ExecuteRequest(_requestMethod, _endpoint);
                             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
                             
                             if (res != nullptr) {
@@ -145,9 +139,9 @@ namespace timeattack {
             // Create a local copy of results
             auto results = _results;
             
-            // Sort results based on duration
+            // Sort results on duration
             std::sort(results.begin(), results.end(), [this](const auto& a, const auto& b) {
-                return _resultFunction(a.samples) < _resultFunction(a.samples);
+                return _resultFunction(a.samples) < _resultFunction(b.samples);
             });
             
             for (const auto& result : results) {
@@ -166,14 +160,14 @@ namespace timeattack {
         void SetRequestType(const RequestMethod method) noexcept { _requestMethod = method; }
         
         /**
-         * Sets the API path to use
+         * Sets the Endpoint to use
          */
-        void SetAPIPath(const std::string& path) noexcept { _apiPath = path; }
+        void SetEndpoint(const std::string& endpoint) noexcept { _endpoint = endpoint; }
         
         /**
          * Sets the function to use to calculate the final resulting duration
          */
-        void SetResultFunc(const ResultFunction& func) noexcept { _resultFunction = func; }
+        void SetResultFunc(const resultFunc_t& func) noexcept { _resultFunction = func; }
         
         /**
          * Sets the number of samples to perform for each input
@@ -196,13 +190,13 @@ namespace timeattack {
         std::vector<std::future<WorkerTaskResult>> _futures;
         std::vector<WorkerTaskResult> _results;
 
-        ResultFunction _resultFunction = result::Average;
+        resultFunc_t _resultFunction = result::Average;
         
         RequestMethod _requestMethod = RequestMethod::GET;
         
-        std::string _apiPath = "";
+        std::string _endpoint = "";
         std::string _bodyFmtTemplate = "";
         
-        int _sampleCount = kDefaultSampleCount;
+        int _sampleCount;
     };
 }

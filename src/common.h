@@ -5,6 +5,8 @@
 #include <mutex>
 #include <condition_variable>
 
+using duration_t = double;
+
 // https://stackoverflow.com/a/4793662
 class Semaphore {
 public:
