@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "semaphore.h"
 #include "result_functions.h"
 #include "rest_client_adapter.h"
 
@@ -76,7 +77,7 @@ namespace timeattack
         void IncreaseProgress() noexcept {
         
             std::unique_lock<std::mutex> lock(_mtxProgress);
-            _processedItems++;
+            ++_processedItems;
             
             auto percentageLeft = static_cast<int>(100 * (static_cast<float>(_processedItems) / _totalItems));
             if (_lastProgress != percentageLeft && percentageLeft % 10 == 0) {
@@ -119,7 +120,7 @@ namespace timeattack
                 
                 auto task = std::async([this, param]() -> WorkerTaskResult {
                     
-                    _sem.wait();
+                    _sem.Wait();
                     
                     spdlog::debug("Processing input: {} [samples: {}]", param, _sampleCount);
                     
@@ -127,7 +128,7 @@ namespace timeattack
                     
                     try {
                         
-                        for (int i=0; i < _sampleCount; i++) {
+                        for (int i=0; i < _sampleCount; ++i) {
                             
                             auto start = std::chrono::steady_clock::now();
                             const auto& res = _cli.ExecuteRequest(_requestMethod, _endpoint, fmt::format(_bodyFmtTemplate, param));
@@ -152,7 +153,7 @@ namespace timeattack
                         spdlog::critical("Unhandled exception while processing input: {}", param);
                     }
                     
-                    _sem.notify();
+                    _sem.Notify();
                     
                     return {param, samples};
                 });

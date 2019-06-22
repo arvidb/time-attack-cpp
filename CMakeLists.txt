@@ -15,6 +15,7 @@ set(SOURCES
    src/worker.h
    src/result_functions.h
    src/rest_client_adapter.h
+   src/semaphore.h
    src/common.h
 )
 
