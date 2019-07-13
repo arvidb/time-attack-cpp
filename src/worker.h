@@ -21,6 +21,7 @@ namespace timeattack
         struct WorkerTaskResult {
             std::string input;
             std::vector<duration_t> samples;
+            duration_t calculatedDuration = std::numeric_limits<duration_t>::min();
         };
         
     public:
@@ -65,6 +66,11 @@ namespace timeattack
                 _results.push_back(future.get());
             }
             _futures.clear();
+            
+            // Apply result function
+            for (auto& result : _results) {
+                result.calculatedDuration = _resultFunction(result.samples);
+            }
         }
         
         void InitProgress(int total) noexcept {
@@ -88,7 +94,7 @@ namespace timeattack
         }
         
         /**
-         * Display the result all worker tasks
+         * Display the result from the worker
          */
         void DisplayResult() const noexcept {
             
@@ -98,16 +104,18 @@ namespace timeattack
             auto results = _results;
             
             // Sort results on duration
-            std::sort(results.begin(), results.end(), [this](const auto& a, const auto& b) {
-                return _resultFunction(a.samples) < _resultFunction(b.samples);
+            std::sort(results.begin(), results.end(), [this](const auto& lhs, const auto& rhs) {
+                return lhs.calculatedDuration < rhs.calculatedDuration;
             });
             
             for (const auto& result : results) {
                 
-                auto duration = _resultFunction(result.samples);
-                spdlog::info("Average time {:.5f}s for input: \"{}\" after {} tries", duration, result.input, result.samples.size());
+                spdlog::info("Average time {:.5f}s for input: \"{}\" after {} tries",
+                             result.calculatedDuration,
+                             result.input,
+                             result.samples.size());
             }
-            spdlog::info("");
+            spdlog::info(""); // Add empty line to make the output a bit easier to read
         }
         
     private:
