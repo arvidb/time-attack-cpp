@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
     {
         timeattack::Worker worker(hostname, port, timeout, jobCount);
         worker.SetEndpoint(endpoint);
-        worker.SetRequestType(timeattack::RequestMethod::POST);
+        worker.SetRequestType(timeattack::RequestMethod::Post);
         worker.SetSampleCount(sampleCount);
         worker.SetBodyFormatTemplate(bodyFormat);
         worker.SetResultFunc(timeattack::result::Median);

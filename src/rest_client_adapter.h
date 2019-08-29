@@ -5,7 +5,7 @@
 namespace timeattack
 {
     enum class RequestMethod {
-        GET, POST
+        Get, Post
     };
     
     struct RestClientAdapterResponse {
@@ -30,12 +30,12 @@ namespace timeattack
             
             std::shared_ptr<httplib::Response> response;
             
-            if (method == RequestMethod::GET) {
+            if (method == RequestMethod::Get) {
                 if ((response = client.Get(endpoint.c_str())) == nullptr) {
                     throw std::runtime_error("Error while performing GET request");
                 }
             }
-            else if (method == RequestMethod::POST) {
+            else if (method == RequestMethod::Post) {
                 if ((response = client.Post(endpoint.c_str(), postData, "application/x-www-form-urlencoded")) == nullptr) {
                     throw std::runtime_error("Error while performing POST request");
                 }

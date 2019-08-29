@@ -53,13 +53,14 @@ namespace timeattack
             spdlog::info("Body template: {}", _bodyFmtTemplate);
             spdlog::info("Endpoint: {}", _endpoint);
             spdlog::info("Request method: {}",
-                          _requestMethod == RequestMethod::GET ? "GET" : "POST");
-            
-            _results.clear();
+                          _requestMethod == RequestMethod::Get ? "GET" : "POST");
             
             CreateTasks(params);
             
             InitProgress(_futures.size() * _sampleCount);
+            
+            _results.clear();
+            _results.reserve(_futures.size());
             
             // Get results from worker tasks
             for (auto& future : _futures) {
@@ -104,7 +105,7 @@ namespace timeattack
             auto results = _results;
             
             // Sort results on duration
-            std::sort(results.begin(), results.end(), [this](const auto& lhs, const auto& rhs) {
+            std::sort(results.begin(), results.end(), [](const auto& lhs, const auto& rhs) {
                 return lhs.calculatedDuration < rhs.calculatedDuration;
             });
             
@@ -122,6 +123,8 @@ namespace timeattack
         
         void CreateTasks(const std::vector<std::string>& params) {
             
+            _futures.reserve(params.size());
+            
             for (const auto& param : params) {
                 
                 spdlog::debug("Creating task for input: {}", param);
@@ -133,6 +136,7 @@ namespace timeattack
                     spdlog::debug("Processing input: {} [samples: {}]", param, _sampleCount);
                     
                     std::vector<duration_t> samples;
+                    samples.reserve(_sampleCount);
                     
                     try {
                         
@@ -210,7 +214,7 @@ namespace timeattack
 
         resultFunc_t _resultFunction = result::Average;
         
-        RequestMethod _requestMethod = RequestMethod::GET;
+        RequestMethod _requestMethod = RequestMethod::Get;
         
         std::string _endpoint = "";
         std::string _bodyFmtTemplate = "";
@@ -220,6 +224,7 @@ namespace timeattack
         int _lastProgress;
         int _totalItems;
         int _processedItems;
+        
         std::mutex _mtxProgress;
     };
 }
