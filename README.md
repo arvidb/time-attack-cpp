@@ -1,5 +1,13 @@
 # Time Attack Cpp
-An utility to perform benchmark tests on your REST API's endpoints
+A simple utility I made for a CTF challenge to measures the average response time for a REST endpoint.
+
+# Features
+* HTTP POST/GET method
+* Use average, median or percentile functions to calculate the result
+* Test against multiple (request body) inputs
+  * Currently supports using the placeholder "{}" in a request body.
+  * The Placeholder tag will be substituted by all the provided inputs.
+* Concurrent requests
 
 # Technologies
 * cpp-httplib - HTTP library (https://github.com/yhirose/cpp-httplib)
