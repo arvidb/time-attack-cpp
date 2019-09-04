@@ -1,5 +1,5 @@
 # Time Attack Cpp
-A simple utility I made for a CTF challenge to measures the average response time for a REST endpoint.
+A simple utility I made for a CTF challenge to measures the average response time for REST endpoints.
 
 # Features
 * HTTP POST/GET method
